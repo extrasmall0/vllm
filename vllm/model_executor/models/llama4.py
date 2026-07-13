@@ -530,6 +530,13 @@ class Llama4Model(LlamaModel):
                 # TODO: add EP support for non fused weights
                 pass
 
+            # The transpose/chunk/shard-select above can leave the weight as
+            # a non-contiguous view. Copying a non-contiguous CPU tensor to
+            # GPU is dramatically slower than copying a contiguous one
+            # (multiple seconds per weight), so materialize it here.
+            if not new_loaded_weight.is_contiguous():
+                new_loaded_weight = new_loaded_weight.contiguous()
+
             # Load the weight into the module parameter with corresponding
             # shard id and expert id.
             weight_loader(
